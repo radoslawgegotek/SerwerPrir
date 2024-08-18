@@ -53,8 +53,6 @@ namespace Serwer.Controllers
             };
             await _fileRepository.AddFileAsync(fileRecord);
 
-            //await _taskQueue.AddTask(() => ProcessFile(fileRecord));
-
             return Ok();
         }
 
@@ -108,7 +106,6 @@ namespace Serwer.Controllers
                 return NotFound("File not found.");
             }
 
-            // Proces przetwarzania pliku
             await ProcessFile(fileRecord);
 
             return Ok("File processed successfully.");
@@ -118,11 +115,9 @@ namespace Serwer.Controllers
         {
             Console.WriteLine("Starting ProcessFile method.");
 
-            // Wczytaj wszystkie linie z pliku
             var lines = await System.IO.File.ReadAllLinesAsync(fileRecord.FilePath);
             var results = new ConcurrentBag<string>();
 
-            // Utwórz zadania do przetworzenia każdej linii
             var tasks = lines.Select(line => Task.Run(async () =>
             {
                 var threadId = Thread.CurrentThread.ManagedThreadId;
@@ -135,7 +130,6 @@ namespace Serwer.Controllers
             Console.WriteLine("All tasks have been added to the queue.");
             try
             {
-                // Oczekiwanie na zakończenie wszystkich zadań
                 await Task.WhenAll(tasks);
                 Console.WriteLine("All tasks completed.");
             }
@@ -148,7 +142,6 @@ namespace Serwer.Controllers
 
             try
             {
-                // Konstrukcja ścieżki dla nowego pliku
                 var directory = Path.GetDirectoryName(fileRecord.FilePath) ?? Directory.GetCurrentDirectory();
                 var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileRecord.FileName);
                 var fileExtension = Path.GetExtension(fileRecord.FileName);
@@ -162,7 +155,6 @@ namespace Serwer.Controllers
                 outputFilePath = Path.Combine(directory, $"{fileNameWithoutExtension}_reverse{fileExtension}");
                 Console.WriteLine($"Output file path: {outputFilePath}");
 
-                // Zapisz przetworzone linie do nowego pliku
                 using (var writer = new StreamWriter(outputFilePath))
                 {
                     foreach (var line in results)
@@ -172,7 +164,6 @@ namespace Serwer.Controllers
                 }
                 Console.WriteLine("File written successfully.");
 
-                // Dodaj nowy plik do bazy danych
                 var reversedFileRecord = new FileRecord
                 {
                     FileName = $"{fileNameWithoutExtension}_reverse{fileExtension}",
