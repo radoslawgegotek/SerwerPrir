@@ -1,0 +1,12 @@
+    class SqlComparisonOperator {
+        Equals
+        Differs
+        Like
+        LessOrEqual
+        GreaterOrEqual
+    }
+    class SortColumn {
+        - m_column: std::string
+        - m_ascending: bool
+        + SortColumn(column: std::string, ascending: bool)
+    }

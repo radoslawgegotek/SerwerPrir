@@ -29,8 +29,9 @@ builder.Services.AddAuthentication("Bearer")
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<FileRepository>();
-builder.Services.AddSingleton<TaskQueue>();
-builder.Services.AddHostedService<TaskQueueService>();
+//builder.Services.AddSingleton<TaskQueue>();
+builder.Services.AddSingleton<TaskQueue>(sp => new TaskQueue(concurrencyLevel: 3));
+//builder.Services.AddHostedService<TaskQueueService>();
 
 
 builder.Services.AddCors(options =>

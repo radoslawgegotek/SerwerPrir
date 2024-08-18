@@ -1,30 +1,72 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 namespace Serwer.Services
 {
     public class TaskQueue
     {
-        private readonly ConcurrentQueue<Func<CancellationToken, Task>> _workItems = new ConcurrentQueue<Func<CancellationToken, Task>>();
-        private readonly SemaphoreSlim _signal = new SemaphoreSlim(0);
+        private readonly SemaphoreSlim _semaphore;
+        private readonly ConcurrentBag<Task> _tasks;
 
-        public async Task<Func<CancellationToken, Task>> DequeueAsync(CancellationToken cancellationToken)
+        public TaskQueue(int concurrencyLevel)
         {
-            await _signal.WaitAsync(cancellationToken);
-            _workItems.TryDequeue(out var workItem);
-            return workItem;
+            _semaphore = new SemaphoreSlim(concurrencyLevel);
+            _tasks = new ConcurrentBag<Task>();
         }
 
-        public void QueueBackgroundWorkItem(Func<CancellationToken, Task> workItem)
+        public async Task AddTask(Func<Task> taskGenerator)
         {
-            if (workItem == null)
+            Console.WriteLine("Adding task to queue.");
+            await _semaphore.WaitAsync();
+            Console.WriteLine("Semaphore acquired.");
+
+            var task = Task.Run(async () =>
             {
-                throw new ArgumentNullException(nameof(workItem));
+                var threadId = Thread.CurrentThread.ManagedThreadId;
+                Console.WriteLine($"Running task on thread {threadId}");
+
+                try
+                {
+                    await taskGenerator();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Exception in task: {ex.Message}");
+                }
+                finally
+                {
+                    _semaphore.Release();
+                    Console.WriteLine("Semaphore released.");
+                }
+            });
+
+            _tasks.Add(task);
+            Console.WriteLine("Task added to the task list.");
+        }
+
+        public async Task WhenAllTasksComplete()
+        {
+            Console.WriteLine("Waiting for all tasks to complete.");
+
+            var tasksArray = _tasks.ToArray();
+            if (tasksArray.Length == 0)
+            {
+                Console.WriteLine("No tasks to wait for.");
+                return;
             }
 
-            _workItems.Enqueue(workItem);
-            _signal.Release();
+            try
+            {
+                await Task.WhenAll(tasksArray);
+                Console.WriteLine("All tasks in TaskQueue completed.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in TaskQueue: {ex.Message}");
+            }
         }
     }
 }
