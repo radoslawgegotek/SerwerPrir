@@ -111,6 +111,68 @@ namespace Serwer.Controllers
             return Ok("File processed successfully.");
         }
 
+        [HttpPost("largestnumber/{id}")]
+        public async Task<IActionResult> FindLargestNumber(int id)
+        {
+            var fileRecord = await _fileRepository.GetFileByIdAsync(id);
+            if (fileRecord == null || !System.IO.File.Exists(fileRecord.FilePath))
+            {
+                return NotFound("File not found.");
+            }
+
+            var largestNumber = await Task.Run(() => FindLargestNumberInFile(fileRecord));
+
+            return Ok(new { LargestNumber = largestNumber });
+        }
+
+        private int FindLargestNumberInFile(FileRecord fileRecord)
+        {
+            Console.WriteLine("Starting FindLargestNumberInFile method.");
+            var lines = System.IO.File.ReadAllLines(fileRecord.FilePath);
+
+            var numLines = lines.Length;
+
+            const int linesPerPart = 1;
+            var parts = new List<string[]>();
+            for (int i = 0; i < numLines; i += linesPerPart)
+            {
+                var part = lines.Skip(i).Take(linesPerPart).ToArray();
+                parts.Add(part);
+            }
+
+            var maxNumbers = new ConcurrentBag<int>();
+            var tasks = parts.Select(part => Task.Run(() =>
+            {
+                var threadId = Thread.CurrentThread.ManagedThreadId;
+                Console.WriteLine($"Processing part on thread {threadId}");
+                var maxInPart = FindMaxInPart(part);
+                maxNumbers.Add(maxInPart);
+            })).ToArray();
+
+            Console.WriteLine("All tasks have been added to the queue.");
+            try
+            {
+                Task.WaitAll(tasks);
+                Console.WriteLine("All tasks completed.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in Task.WhenAll: {ex.Message}");
+            }
+
+            return maxNumbers.Max();
+        }
+
+        private int FindMaxInPart(string[] part)
+        {
+            if (part == null || part.Length == 0)
+                return int.MinValue;
+
+            return part.Select(line => int.TryParse(line, out var num) ? num : int.MinValue).Max();
+        }
+
+
+
         private async Task ProcessFile(FileRecord fileRecord)
         {
             Console.WriteLine("Starting ProcessFile method.");
