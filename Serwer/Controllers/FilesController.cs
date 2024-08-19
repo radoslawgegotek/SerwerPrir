@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Serwer.Models;
 using Serwer.Repositories;
-using Serwer.Services;
 using System.Collections.Concurrent;
 
 namespace Serwer.Controllers
@@ -15,13 +14,11 @@ namespace Serwer.Controllers
         private readonly string basePath = "C:\\Users\\micha\\Desktop\\PRIRprojekt\\SerwerPrir\\Serwer\\NetworkDrive";
         private readonly FileRepository _fileRepository;
         private readonly UserRepository _userRepository;
-        private readonly TaskQueue _taskQueue;
 
-        public FilesController(FileRepository fileRepository, UserRepository userRepository, TaskQueue taskQueue)
+        public FilesController(FileRepository fileRepository, UserRepository userRepository)
         {
             _fileRepository = fileRepository;
             _userRepository = userRepository;
-            _taskQueue = taskQueue;
         }
 
         [HttpPost("upload")]
